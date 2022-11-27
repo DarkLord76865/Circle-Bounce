@@ -16,7 +16,11 @@ def move_balls(balls, interval):
 def generate_frame(balls, width, height):
 	frame = np.zeros((height, width, 3), dtype="uint8")
 	for ball in balls:
-		cv2.circle(frame, (ball.x, ball.y), ball.r, ball.color, -1, cv2.LINE_AA)
+		#print(frame, (ball.x, ball.y), ball.r, ball.color, -1, cv2.LINE_AA, sep="\n")
+		cv2.circle(frame, (int(round(ball.x, 0)), int(round(ball.y, 0))), ball.r, ball.color, -1, cv2.LINE_AA)
+	#cv2.imshow("test", frame)
+	#cv2.waitKey(0)
+	#cv2.destroyAllWindows()
 	return frame
 
 class Ball:
@@ -59,58 +63,106 @@ if __name__ == '__main__':
 		balls.append(new_ball)
 	del new_ball, x, y, radius, valid
 
+	# simulation
+
 	video = cv2.VideoWriter("test.mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 	num_of_frames = video_length * fps
+	for x in range(60):
+		video.write(generate_frame(balls, width, height))
+
 	for frame_num in range(num_of_frames):
-		print(f"{round((frame_num / num_of_frames) * 100, 2)} %")
+		# print(f"{round((frame_num / num_of_frames) * 100, 2)} %")
 
 		times = []
 		for ball1 in range(len(balls)):
 			times_ball1 = []
 			for ball2 in range(ball1 + 1, len(balls)):
-				delta_x = balls[ball2].x - balls[ball1].x
-				delta_y = balls[ball2].y - balls[ball1].y
-				delta_vx = balls[ball2].v_x - balls[ball1].v_x
-				delta_vy = balls[ball2].v_y - balls[ball1].v_y
-				sum_r = balls[ball2].r + balls[ball1].r
-				cross_xvy_sqr = (delta_x ** 2) * (delta_vy ** 2)
-				cross_yvx_sqr = (delta_y ** 2) * (delta_vx ** 2)
-				multiply_every_double = delta_x * delta_y * delta_vx * delta_y * 2
-				print(cross_xvy_sqr + cross_yvx_sqr - multiply_every_double)
-				if sqrt(cross_xvy_sqr + cross_yvx_sqr - multiply_every_double) < sum_r:
-					sum_v_sqr = (delta_vx ** 2) + (delta_vy ** 2)
-					under_root = sqrt(multiply_every_double - cross_xvy_sqr - cross_yvx_sqr + (sum_r ** 2) * sum_v_sqr)
-					sols = [(- (delta_x * delta_vx + delta_y * delta_vy) - under_root) / sum_v_sqr, (- (delta_x * delta_vx + delta_y * delta_vy) + under_root) / sum_v_sqr]
-					times_ball1.append(min(tuple(x for x in sols if x >= 0)))
+				min_dist_pow2 = (balls[ball1].r + balls[ball2].r) ** 2
+
+				delta_x = balls[ball1].x - balls[ball2].x
+				delta_y = balls[ball1].y - balls[ball2].y
+				delta_vx = balls[ball1].v_x - balls[ball2].v_x
+				delta_vy = balls[ball1].v_y - balls[ball2].v_y
+
+				a = delta_vx + delta_vy
+				if a != 0:
+					b_divid_2 = delta_x * delta_vx + delta_y * delta_vy
+					c = delta_x ** 2 + delta_y ** 2
+
+					if (c - ((b_divid_2 ** 2) / a)) < min_dist_pow2:
+						#print(b_divid_2, a, c, min_dist_pow2)
+						discriminant_sqrt = sqrt((b_divid_2 ** 2) - (a * (c - min_dist_pow2)))
+						sols = [(-b_divid_2 - discriminant_sqrt) / a, (-b_divid_2 + discriminant_sqrt) / a]
+						sols = [x for x in sols if x >= 0]
+						try:
+							times_ball1.append(min(sols))
+						except ValueError:
+							times_ball1.append(None)
+					else:
+						times_ball1.append(None)
 				else:
 					times_ball1.append(None)
 			times.append(times_ball1)
+		# print(times)
+
+		# za odbijene lopte provesti nove izracune vremena
 		try:
-			smallest_time = times[0][0]
-			smallest_ind = (0, 0)
+			smallest_time = interval
+			smallest_ind = (None, None)
 			for x in range(len(times)):
 				for y in range(len(times[x])):
-					if times[x][y] < smallest_time:
-						smallest_ind = (x, y)
+					if times[x][y] is not None and times[x][y] < smallest_time:
+						smallest_ind = (x, x + y + 1)
 						smallest_time = times[x][y]
-			if smallest_time <= interval:
+			if smallest_time <= interval and smallest_ind[0] is not None:
+				print("prolaz")
 				balls = move_balls(balls, smallest_time)
 				for x in range(len(times)):
-					for y in range(len(times)):
-						times[x][y] -= smallest_time
+					for y in range(len(times[x])):
+						if times[x][y] is not None:
+							times[x][y] -= smallest_time
 
 				# Handling collision
 
+				print(f"Ball1:\nm: {balls[smallest_ind[0]].m}\nx: {balls[smallest_ind[0]].x}\ny: {balls[smallest_ind[0]].y}\nvx: {balls[smallest_ind[0]].v_x}\nvy: {balls[smallest_ind[0]].v_y}")
+				print(f"Ball2:\nm: {balls[smallest_ind[1]].m}\nx: {balls[smallest_ind[1]].x}\ny: {balls[smallest_ind[1]].y}\nvx: {balls[smallest_ind[1]].v_x}\nvy: {balls[smallest_ind[1]].v_y}")
+
 				# Ball_1: balls[smallest_ind[0]]
 				# Ball_2: balls[smallest_ind[0] + smallest_ind[1] + 1]
-				m1_plus_m2 = balls[smallest_ind[0]].m + balls[smallest_ind[0] + smallest_ind[1] + 1].m
-				m1_minus_m2 = balls[smallest_ind[0]].m - balls[smallest_ind[0] + smallest_ind[1] + 1].m
 
-				balls[smallest_ind[0]].v_x = ((m1_minus_m2 * balls[smallest_ind[0]].v_x) + (2 * balls[smallest_ind[0] + smallest_ind[1] + 1].m * balls[smallest_ind[0] + smallest_ind[1] + 1].v_x)) / m1_plus_m2
-				balls[smallest_ind[0] + smallest_ind[1] + 1].v_x = (- (m1_minus_m2 * balls[smallest_ind[0] + smallest_ind[1] + 1].v_x) + (2 * balls[smallest_ind[0]].m * balls[smallest_ind[0]].v_x)) / m1_plus_m2
+				m1_plus_m2 = balls[smallest_ind[0]].m + balls[smallest_ind[1]].m
+				m1_minus_m2 = balls[smallest_ind[0]].m - balls[smallest_ind[1]].m
+				r1_plus_r2 = balls[smallest_ind[0]].r + balls[smallest_ind[1]].r
+				delta_x = abs(balls[smallest_ind[0]].x - balls[smallest_ind[1]].x)
+				delta_y = abs(balls[smallest_ind[0]].y - balls[smallest_ind[1]].y)
 
-				balls[smallest_ind[0]].v_y = ((m1_minus_m2 * balls[smallest_ind[0]].v_y) + (2 * balls[smallest_ind[0] + smallest_ind[1] + 1].m * balls[smallest_ind[0] + smallest_ind[1] + 1].v_y)) / m1_plus_m2
-				balls[smallest_ind[0] + smallest_ind[1] + 1].v_y = (- (m1_minus_m2 * balls[smallest_ind[0] + smallest_ind[1] + 1].v_y) + (2 * balls[smallest_ind[0]].m * balls[smallest_ind[0]].v_y)) / m1_plus_m2
+				if delta_x == 0:
+					v_rel_1 = r1_plus_r2 * (balls[smallest_ind[0]].v_y / delta_y)
+					v_rel_2 = r1_plus_r2 * (balls[smallest_ind[1]].v_y / delta_y)
+				elif delta_y == 0:
+					v_rel_1 = r1_plus_r2 * (balls[smallest_ind[0]].v_x / delta_x)
+					v_rel_2 = r1_plus_r2 * (balls[smallest_ind[1]].v_x / delta_x)
+				else:
+					v_rel_1 = r1_plus_r2 * ((balls[smallest_ind[0]].v_x / delta_x) + (balls[smallest_ind[0]].v_y / delta_y))
+					v_rel_2 = r1_plus_r2 * ((balls[smallest_ind[1]].v_x / delta_x) + (balls[smallest_ind[1]].v_y / delta_y))
+
+				v_rel_1_new = ((m1_minus_m2 * v_rel_1) + (2 * balls[smallest_ind[1]].m * v_rel_2)) / m1_plus_m2
+				v_rel_2_new = (- (m1_minus_m2 * v_rel_2) + (2 * balls[smallest_ind[0]].m * v_rel_1)) / m1_plus_m2
+
+				balls[smallest_ind[0]].v_x += v_rel_1_new * (delta_x / r1_plus_r2)
+				balls[smallest_ind[0]].v_y += v_rel_1_new * (delta_y / r1_plus_r2)
+
+				balls[smallest_ind[1]].v_x += v_rel_2_new * (delta_x / r1_plus_r2)
+				balls[smallest_ind[1]].v_y += v_rel_2_new * (delta_y / r1_plus_r2)
+
+				# balls[smallest_ind[0]].v_x = ((m1_minus_m2 * balls[smallest_ind[0]].v_x) + (2 * balls[smallest_ind[1]].m * balls[smallest_ind[1]].v_x)) / m1_plus_m2
+				# balls[smallest_ind[1]].v_x = (- (m1_minus_m2 * balls[smallest_ind[1]].v_x) + (2 * balls[smallest_ind[0]].m * balls[smallest_ind[0]].v_x)) / m1_plus_m2
+
+				# balls[smallest_ind[0]].v_y = ((m1_minus_m2 * balls[smallest_ind[0]].v_y) + (2 * balls[smallest_ind[1]].m * balls[smallest_ind[1]].v_y)) / m1_plus_m2
+				# balls[smallest_ind[1]].v_y = (- (m1_minus_m2 * balls[smallest_ind[1]].v_y) + (2 * balls[smallest_ind[0]].m * balls[smallest_ind[0]].v_y)) / m1_plus_m2
+
+				print(f"Ball1:\nm: {balls[smallest_ind[0]].m}\nx: {balls[smallest_ind[0]].x}\ny: {balls[smallest_ind[0]].y}\nvx: {balls[smallest_ind[0]].v_x}\nvy: {balls[smallest_ind[0]].v_y}")
+				print(f"Ball2:\nm: {balls[smallest_ind[1]].m}\nx: {balls[smallest_ind[1]].x}\ny: {balls[smallest_ind[1]].y}\nvx: {balls[smallest_ind[1]].v_x}\nvy: {balls[smallest_ind[1]].v_y}")
 
 			else:
 				raise IndexError
