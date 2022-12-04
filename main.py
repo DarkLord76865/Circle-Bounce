@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import random
-from math import pi, sqrt
+from math import pi, sqrt, sin, cos, atan
 
 
 def rgb_bgr_convert(color):
@@ -26,7 +26,7 @@ def generate_frame(balls, width, height):
 class Ball:
 	def __init__(self, r, x, y, v_x, v_y, color):
 		self.r = r
-		self.m = (r ** 2) * pi
+		self.m = ((r ** 3) * pi * 4) / 3
 		self.x = x
 		self.y = y
 		self.v_x = v_x
@@ -124,18 +124,61 @@ if __name__ == '__main__':
 
 				# Handling collision
 
-				print(f"Ball1:\nm: {balls[smallest_ind[0]].m}\nx: {balls[smallest_ind[0]].x}\ny: {balls[smallest_ind[0]].y}\nvx: {balls[smallest_ind[0]].v_x}\nvy: {balls[smallest_ind[0]].v_y}")
-				print(f"Ball2:\nm: {balls[smallest_ind[1]].m}\nx: {balls[smallest_ind[1]].x}\ny: {balls[smallest_ind[1]].y}\nvx: {balls[smallest_ind[1]].v_x}\nvy: {balls[smallest_ind[1]].v_y}")
+				print(f"Ball1:\nm: {balls[smallest_ind[0]].m}\nr: {balls[smallest_ind[0]].r}\nx: {balls[smallest_ind[0]].x}\ny: {balls[smallest_ind[0]].y}\nvx: {balls[smallest_ind[0]].v_x}\nvy: {balls[smallest_ind[0]].v_y}")
+				print(f"Ball2:\nm: {balls[smallest_ind[1]].m}\nr: {balls[smallest_ind[1]].r}\nx: {balls[smallest_ind[1]].x}\ny: {balls[smallest_ind[1]].y}\nvx: {balls[smallest_ind[1]].v_x}\nvy: {balls[smallest_ind[1]].v_y}")
 
 				# Ball_1: balls[smallest_ind[0]]
 				# Ball_2: balls[smallest_ind[0] + smallest_ind[1] + 1]
 
-				m1_plus_m2 = balls[smallest_ind[0]].m + balls[smallest_ind[1]].m
-				m1_minus_m2 = balls[smallest_ind[0]].m - balls[smallest_ind[1]].m
-				r1_plus_r2 = balls[smallest_ind[0]].r + balls[smallest_ind[1]].r
-				delta_x = abs(balls[smallest_ind[0]].x - balls[smallest_ind[1]].x)
-				delta_y = abs(balls[smallest_ind[0]].y - balls[smallest_ind[1]].y)
+				#m1_plus_m2 = balls[smallest_ind[0]].m + balls[smallest_ind[1]].m
+				#m1_minus_m2 = balls[smallest_ind[0]].m - balls[smallest_ind[1]].m
 
+				d = balls[smallest_ind[0]].r + balls[smallest_ind[1]].r
+				nx = (balls[smallest_ind[1]].x - balls[smallest_ind[0]].x) / d
+				ny = (balls[smallest_ind[1]].y - balls[smallest_ind[0]].y) / d
+				p = (2 * (nx * (balls[smallest_ind[0]].v_x - balls[smallest_ind[1]].v_x) + ny * (balls[smallest_ind[0]].v_y - balls[smallest_ind[1]].v_y))) / (balls[smallest_ind[0]].m + balls[smallest_ind[1]].m)
+
+				balls[smallest_ind[0]].v_x -= p * balls[smallest_ind[1]].m * nx
+				balls[smallest_ind[0]].v_y -= p * balls[smallest_ind[1]].m * ny
+				balls[smallest_ind[1]].v_x += p * balls[smallest_ind[0]].m * nx
+				balls[smallest_ind[1]].v_y += p * balls[smallest_ind[0]].m * ny
+
+
+				"""
+				v1_xr = v1 * cos(angle1 - angle_phi)
+				v1_yr = v1 * sin(angle1 - angle_phi)
+				v2_xr = v2 * cos(angle2 - angle_phi)
+				v2_yr = v2 * sin(angle2 - angle_phi)
+				"""
+
+
+
+
+
+
+
+
+
+
+				#delta_x = abs(balls[smallest_ind[0]].x - balls[smallest_ind[1]].x)
+				#delta_y = abs(balls[smallest_ind[0]].y - balls[smallest_ind[1]].y)
+
+				#cos_alpha = delta_y / d  # alpha -> angle near vertical axis
+				#cos_beta = delta_x / d  # beta -> angle near horizontal axis
+
+				#v_rel_1 = balls[smallest_ind[0]].v_x * cos_beta + balls[smallest_ind[0]].v_y * cos_alpha
+				#v_rel_2 = balls[smallest_ind[1]].v_x * cos_beta + balls[smallest_ind[1]].v_y * cos_alpha
+
+				#v_rel_1_new = ((m1_minus_m2 * v_rel_1) + (2 * balls[smallest_ind[1]].m * v_rel_2)) / m1_plus_m2
+				#v_rel_2_new = (- (m1_minus_m2 * v_rel_2) + (2 * balls[smallest_ind[0]].m * v_rel_1)) / m1_plus_m2
+
+				#balls[smallest_ind[0]].v_x += v_rel_1_new / cos_beta
+				#balls[smallest_ind[0]].v_y += v_rel_1_new / cos_alpha
+
+				#balls[smallest_ind[1]].v_x += v_rel_2_new / cos_beta
+				#balls[smallest_ind[1]].v_y += v_rel_2_new / cos_alpha
+
+				"""
 				if delta_x == 0:
 					v_rel_1 = r1_plus_r2 * (balls[smallest_ind[0]].v_y / delta_y)
 					v_rel_2 = r1_plus_r2 * (balls[smallest_ind[1]].v_y / delta_y)
@@ -145,15 +188,7 @@ if __name__ == '__main__':
 				else:
 					v_rel_1 = r1_plus_r2 * ((balls[smallest_ind[0]].v_x / delta_x) + (balls[smallest_ind[0]].v_y / delta_y))
 					v_rel_2 = r1_plus_r2 * ((balls[smallest_ind[1]].v_x / delta_x) + (balls[smallest_ind[1]].v_y / delta_y))
-
-				v_rel_1_new = ((m1_minus_m2 * v_rel_1) + (2 * balls[smallest_ind[1]].m * v_rel_2)) / m1_plus_m2
-				v_rel_2_new = (- (m1_minus_m2 * v_rel_2) + (2 * balls[smallest_ind[0]].m * v_rel_1)) / m1_plus_m2
-
-				balls[smallest_ind[0]].v_x += v_rel_1_new * (delta_x / r1_plus_r2)
-				balls[smallest_ind[0]].v_y += v_rel_1_new * (delta_y / r1_plus_r2)
-
-				balls[smallest_ind[1]].v_x += v_rel_2_new * (delta_x / r1_plus_r2)
-				balls[smallest_ind[1]].v_y += v_rel_2_new * (delta_y / r1_plus_r2)
+				"""
 
 				# balls[smallest_ind[0]].v_x = ((m1_minus_m2 * balls[smallest_ind[0]].v_x) + (2 * balls[smallest_ind[1]].m * balls[smallest_ind[1]].v_x)) / m1_plus_m2
 				# balls[smallest_ind[1]].v_x = (- (m1_minus_m2 * balls[smallest_ind[1]].v_x) + (2 * balls[smallest_ind[0]].m * balls[smallest_ind[0]].v_x)) / m1_plus_m2
