@@ -102,43 +102,13 @@ if __name__ == '__main__':
 		print(f"{round((frame_num / num_of_frames) * 100, 2)} %")
 
 		times = []
-		for ball1 in range(len(balls)):
+		for ball1 in range(len(balls) - 1):
 			times_ball1 = []
 			for ball2 in range(ball1 + 1, len(balls)):
-				# write position of balls as functions of time (x + vx*t, y + vy*t)
-				# write distance of 2 balls with those functions
-				# square to get rid of square root
-				# find minimum value of that distance^2 function, and if it is smaller than d^2, find solutions for that function, take the one that happens sooner
-
-				d_pow2 = (balls[ball1].r + balls[ball2].r) ** 2  # distance between balls at collision squared (d^2)
-				delta_x = balls[ball1].x - balls[ball2].x  # x1 - x2
-				delta_y = balls[ball1].y - balls[ball2].y  # y1 - y2
-				delta_vx = balls[ball1].v_x - balls[ball2].v_x  # vx1 - vx2
-				delta_vy = balls[ball1].v_y - balls[ball2].v_y  # vy1 - vy2
-
-				# calculate coefficients of distance^2 function
-				a = (delta_vx ** 2) + (delta_vy ** 2)  # first coefficient
-				if a != 0:  # if a is 0, then function is not quadratic, balls aren't moving, therefore, there is no collision
-					b_divis_2 = (delta_x * delta_vx) + (delta_y * delta_vy)  # second coefficient divided by 2 (it simplifies function when in that form)
-					c = (delta_x ** 2) + (delta_y ** 2)  # third coefficient
-
-					if (c - ((b_divis_2 ** 2) / a)) < d_pow2:  # if minimum value of distance^2 function is smaller than d^2, then the balls would collide
-						# find solutions for function, when it's value is d^2
-						discriminant_sqrt = sqrt((b_divis_2 ** 2) - (a * (c - d_pow2)))  # calculate sqrt of discriminant
-						sols = ((-b_divis_2 - discriminant_sqrt) / a, (-b_divis_2 + discriminant_sqrt) / a)  # calculate both solutions
-						sols = [x for x in sols if x >= 0]  # take only solutions bigger than 0 (can't reverse time)
-						if len(sols) != 0:
-							times_ball1.append(min(sols))
-						else:
-							times_ball1.append(None)
-					else:
-						times_ball1.append(None)
-				else:
-					times_ball1.append(None)
+				times_ball1.append(calculate_collision(balls, ball1, ball2))
 			times.append(times_ball1)
-		# print(times)
 
-		# TODO: za odbijene lopte provesti nove izracune vremena, uvesti granice ekrana
+		# TODO: uvesti granice ekrana
 
 		moved_time = 0
 		while moved_time < interval:
@@ -168,7 +138,10 @@ if __name__ == '__main__':
 				for x in range(len(times)):
 					for y in range(len(times[x])):
 						if x in smallest_ind or (x + y + 1) in smallest_ind:
-
+							if x == smallest_ind[0] and (x + y + 1) == smallest_ind[1]:
+								times[x][y] = None
+							else:
+								times[x][y] = calculate_collision(balls, x, x + y + 1)
 						elif times[x][y] is not None:
 							times[x][y] -= smallest_time
 				moved_time += smallest_time
