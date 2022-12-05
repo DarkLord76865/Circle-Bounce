@@ -23,6 +23,34 @@ def generate_frame(balls, width, height):
 	#cv2.destroyAllWindows()
 	return frame
 
+def calculate_collision(balls, ball1, ball2):
+	# write position of balls as functions of time (x + vx*t, y + vy*t)
+	# write distance of 2 balls with those functions
+	# square to get rid of square root
+	# find minimum value of that distance^2 function, and if it is smaller than d^2, find solutions for that function, take the one that happens sooner
+
+	d_pow2 = (balls[ball1].r + balls[ball2].r) ** 2  # distance between balls at collision squared (d^2)
+	delta_x = balls[ball1].x - balls[ball2].x  # x1 - x2
+	delta_y = balls[ball1].y - balls[ball2].y  # y1 - y2
+	delta_vx = balls[ball1].v_x - balls[ball2].v_x  # vx1 - vx2
+	delta_vy = balls[ball1].v_y - balls[ball2].v_y  # vy1 - vy2
+
+	# calculate coefficients of distance^2 function
+	a = (delta_vx ** 2) + (delta_vy ** 2)  # first coefficient
+	if a != 0:  # if a is 0, then function is not quadratic, balls aren't moving, therefore, there is no collision
+		b_divis_2 = (delta_x * delta_vx) + (delta_y * delta_vy)  # second coefficient divided by 2 (it simplifies function when in that form)
+		c = (delta_x ** 2) + (delta_y ** 2)  # third coefficient
+
+		if (c - ((b_divis_2 ** 2) / a)) < d_pow2:  # if minimum value of distance^2 function is smaller than d^2, then the balls would collide
+			# find solutions for function, when it's value is d^2
+			discriminant_sqrt = sqrt((b_divis_2 ** 2) - (a * (c - d_pow2)))  # calculate sqrt of discriminant
+			sols = (
+			(-b_divis_2 - discriminant_sqrt) / a, (-b_divis_2 + discriminant_sqrt) / a)  # calculate both solutions
+			sols = [x for x in sols if x >= 0]  # take only solutions bigger than 0 (can't reverse time)
+			if len(sols) != 0:
+				return min(sols)
+	return None
+
 class Ball:
 	def __init__(self, r, x, y, v_x, v_y, color):
 		self.r = r
@@ -43,6 +71,7 @@ if __name__ == '__main__':
 
 	interval = 1 / fps
 
+	# generate balls
 	balls = []
 	for _ in range(num_of_balls):
 		radius = random.randint(int(round(min(width, height) * 0.02, 0)), int(round(min(width, height) * 0.1, 0)))
@@ -64,39 +93,43 @@ if __name__ == '__main__':
 	del new_ball, x, y, radius, valid
 
 	# simulation
-
 	video = cv2.VideoWriter("test.mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 	num_of_frames = video_length * fps
 	for x in range(60):
 		video.write(generate_frame(balls, width, height))
 
 	for frame_num in range(num_of_frames):
-		# print(f"{round((frame_num / num_of_frames) * 100, 2)} %")
+		print(f"{round((frame_num / num_of_frames) * 100, 2)} %")
 
 		times = []
 		for ball1 in range(len(balls)):
 			times_ball1 = []
 			for ball2 in range(ball1 + 1, len(balls)):
-				min_dist_pow2 = (balls[ball1].r + balls[ball2].r) ** 2
+				# write position of balls as functions of time (x + vx*t, y + vy*t)
+				# write distance of 2 balls with those functions
+				# square to get rid of square root
+				# find minimum value of that distance^2 function, and if it is smaller than d^2, find solutions for that function, take the one that happens sooner
 
-				delta_x = balls[ball1].x - balls[ball2].x
-				delta_y = balls[ball1].y - balls[ball2].y
-				delta_vx = balls[ball1].v_x - balls[ball2].v_x
-				delta_vy = balls[ball1].v_y - balls[ball2].v_y
+				d_pow2 = (balls[ball1].r + balls[ball2].r) ** 2  # distance between balls at collision squared (d^2)
+				delta_x = balls[ball1].x - balls[ball2].x  # x1 - x2
+				delta_y = balls[ball1].y - balls[ball2].y  # y1 - y2
+				delta_vx = balls[ball1].v_x - balls[ball2].v_x  # vx1 - vx2
+				delta_vy = balls[ball1].v_y - balls[ball2].v_y  # vy1 - vy2
 
-				a = delta_vx + delta_vy
-				if a != 0:
-					b_divid_2 = delta_x * delta_vx + delta_y * delta_vy
-					c = delta_x ** 2 + delta_y ** 2
+				# calculate coefficients of distance^2 function
+				a = (delta_vx ** 2) + (delta_vy ** 2)  # first coefficient
+				if a != 0:  # if a is 0, then function is not quadratic, balls aren't moving, therefore, there is no collision
+					b_divis_2 = (delta_x * delta_vx) + (delta_y * delta_vy)  # second coefficient divided by 2 (it simplifies function when in that form)
+					c = (delta_x ** 2) + (delta_y ** 2)  # third coefficient
 
-					if (c - ((b_divid_2 ** 2) / a)) < min_dist_pow2:
-						#print(b_divid_2, a, c, min_dist_pow2)
-						discriminant_sqrt = sqrt((b_divid_2 ** 2) - (a * (c - min_dist_pow2)))
-						sols = [(-b_divid_2 - discriminant_sqrt) / a, (-b_divid_2 + discriminant_sqrt) / a]
-						sols = [x for x in sols if x >= 0]
-						try:
+					if (c - ((b_divis_2 ** 2) / a)) < d_pow2:  # if minimum value of distance^2 function is smaller than d^2, then the balls would collide
+						# find solutions for function, when it's value is d^2
+						discriminant_sqrt = sqrt((b_divis_2 ** 2) - (a * (c - d_pow2)))  # calculate sqrt of discriminant
+						sols = ((-b_divis_2 - discriminant_sqrt) / a, (-b_divis_2 + discriminant_sqrt) / a)  # calculate both solutions
+						sols = [x for x in sols if x >= 0]  # take only solutions bigger than 0 (can't reverse time)
+						if len(sols) != 0:
 							times_ball1.append(min(sols))
-						except ValueError:
+						else:
 							times_ball1.append(None)
 					else:
 						times_ball1.append(None)
@@ -105,104 +138,43 @@ if __name__ == '__main__':
 			times.append(times_ball1)
 		# print(times)
 
-		# za odbijene lopte provesti nove izracune vremena
-		try:
-			smallest_time = interval
+		# TODO: za odbijene lopte provesti nove izracune vremena, uvesti granice ekrana
+
+		moved_time = 0
+		while moved_time < interval:
+			time_left = interval - moved_time
+			smallest_time = time_left
 			smallest_ind = (None, None)
 			for x in range(len(times)):
 				for y in range(len(times[x])):
-					if times[x][y] is not None and times[x][y] < smallest_time:
+					if times[x][y] is not None and times[x][y] <= smallest_time:
 						smallest_ind = (x, x + y + 1)
 						smallest_time = times[x][y]
-			if smallest_time <= interval and smallest_ind[0] is not None:
-				print("prolaz")
+			if smallest_time <= time_left and smallest_ind[0] is not None:
+				print("prolaz", time_left, smallest_time)
 				balls = move_balls(balls, smallest_time)
-				for x in range(len(times)):
-					for y in range(len(times[x])):
-						if times[x][y] is not None:
-							times[x][y] -= smallest_time
 
 				# Handling collision
-
-				print(f"Ball1:\nm: {balls[smallest_ind[0]].m}\nr: {balls[smallest_ind[0]].r}\nx: {balls[smallest_ind[0]].x}\ny: {balls[smallest_ind[0]].y}\nvx: {balls[smallest_ind[0]].v_x}\nvy: {balls[smallest_ind[0]].v_y}")
-				print(f"Ball2:\nm: {balls[smallest_ind[1]].m}\nr: {balls[smallest_ind[1]].r}\nx: {balls[smallest_ind[1]].x}\ny: {balls[smallest_ind[1]].y}\nvx: {balls[smallest_ind[1]].v_x}\nvy: {balls[smallest_ind[1]].v_y}")
-
-				# Ball_1: balls[smallest_ind[0]]
-				# Ball_2: balls[smallest_ind[0] + smallest_ind[1] + 1]
-
-				#m1_plus_m2 = balls[smallest_ind[0]].m + balls[smallest_ind[1]].m
-				#m1_minus_m2 = balls[smallest_ind[0]].m - balls[smallest_ind[1]].m
-
 				d = balls[smallest_ind[0]].r + balls[smallest_ind[1]].r
 				nx = (balls[smallest_ind[1]].x - balls[smallest_ind[0]].x) / d
 				ny = (balls[smallest_ind[1]].y - balls[smallest_ind[0]].y) / d
 				p = (2 * (nx * (balls[smallest_ind[0]].v_x - balls[smallest_ind[1]].v_x) + ny * (balls[smallest_ind[0]].v_y - balls[smallest_ind[1]].v_y))) / (balls[smallest_ind[0]].m + balls[smallest_ind[1]].m)
-
 				balls[smallest_ind[0]].v_x -= p * balls[smallest_ind[1]].m * nx
 				balls[smallest_ind[0]].v_y -= p * balls[smallest_ind[1]].m * ny
 				balls[smallest_ind[1]].v_x += p * balls[smallest_ind[0]].m * nx
 				balls[smallest_ind[1]].v_y += p * balls[smallest_ind[0]].m * ny
 
+				# calculating new times for balls
+				for x in range(len(times)):
+					for y in range(len(times[x])):
+						if x in smallest_ind or (x + y + 1) in smallest_ind:
 
-				"""
-				v1_xr = v1 * cos(angle1 - angle_phi)
-				v1_yr = v1 * sin(angle1 - angle_phi)
-				v2_xr = v2 * cos(angle2 - angle_phi)
-				v2_yr = v2 * sin(angle2 - angle_phi)
-				"""
-
-
-
-
-
-
-
-
-
-
-				#delta_x = abs(balls[smallest_ind[0]].x - balls[smallest_ind[1]].x)
-				#delta_y = abs(balls[smallest_ind[0]].y - balls[smallest_ind[1]].y)
-
-				#cos_alpha = delta_y / d  # alpha -> angle near vertical axis
-				#cos_beta = delta_x / d  # beta -> angle near horizontal axis
-
-				#v_rel_1 = balls[smallest_ind[0]].v_x * cos_beta + balls[smallest_ind[0]].v_y * cos_alpha
-				#v_rel_2 = balls[smallest_ind[1]].v_x * cos_beta + balls[smallest_ind[1]].v_y * cos_alpha
-
-				#v_rel_1_new = ((m1_minus_m2 * v_rel_1) + (2 * balls[smallest_ind[1]].m * v_rel_2)) / m1_plus_m2
-				#v_rel_2_new = (- (m1_minus_m2 * v_rel_2) + (2 * balls[smallest_ind[0]].m * v_rel_1)) / m1_plus_m2
-
-				#balls[smallest_ind[0]].v_x += v_rel_1_new / cos_beta
-				#balls[smallest_ind[0]].v_y += v_rel_1_new / cos_alpha
-
-				#balls[smallest_ind[1]].v_x += v_rel_2_new / cos_beta
-				#balls[smallest_ind[1]].v_y += v_rel_2_new / cos_alpha
-
-				"""
-				if delta_x == 0:
-					v_rel_1 = r1_plus_r2 * (balls[smallest_ind[0]].v_y / delta_y)
-					v_rel_2 = r1_plus_r2 * (balls[smallest_ind[1]].v_y / delta_y)
-				elif delta_y == 0:
-					v_rel_1 = r1_plus_r2 * (balls[smallest_ind[0]].v_x / delta_x)
-					v_rel_2 = r1_plus_r2 * (balls[smallest_ind[1]].v_x / delta_x)
-				else:
-					v_rel_1 = r1_plus_r2 * ((balls[smallest_ind[0]].v_x / delta_x) + (balls[smallest_ind[0]].v_y / delta_y))
-					v_rel_2 = r1_plus_r2 * ((balls[smallest_ind[1]].v_x / delta_x) + (balls[smallest_ind[1]].v_y / delta_y))
-				"""
-
-				# balls[smallest_ind[0]].v_x = ((m1_minus_m2 * balls[smallest_ind[0]].v_x) + (2 * balls[smallest_ind[1]].m * balls[smallest_ind[1]].v_x)) / m1_plus_m2
-				# balls[smallest_ind[1]].v_x = (- (m1_minus_m2 * balls[smallest_ind[1]].v_x) + (2 * balls[smallest_ind[0]].m * balls[smallest_ind[0]].v_x)) / m1_plus_m2
-
-				# balls[smallest_ind[0]].v_y = ((m1_minus_m2 * balls[smallest_ind[0]].v_y) + (2 * balls[smallest_ind[1]].m * balls[smallest_ind[1]].v_y)) / m1_plus_m2
-				# balls[smallest_ind[1]].v_y = (- (m1_minus_m2 * balls[smallest_ind[1]].v_y) + (2 * balls[smallest_ind[0]].m * balls[smallest_ind[0]].v_y)) / m1_plus_m2
-
-				print(f"Ball1:\nm: {balls[smallest_ind[0]].m}\nx: {balls[smallest_ind[0]].x}\ny: {balls[smallest_ind[0]].y}\nvx: {balls[smallest_ind[0]].v_x}\nvy: {balls[smallest_ind[0]].v_y}")
-				print(f"Ball2:\nm: {balls[smallest_ind[1]].m}\nx: {balls[smallest_ind[1]].x}\ny: {balls[smallest_ind[1]].y}\nvx: {balls[smallest_ind[1]].v_x}\nvy: {balls[smallest_ind[1]].v_y}")
-
+						elif times[x][y] is not None:
+							times[x][y] -= smallest_time
+				moved_time += smallest_time
 			else:
-				raise IndexError
-		except IndexError:
-			balls = move_balls(balls, interval)
+				balls = move_balls(balls, time_left)
+				moved_time += time_left
 
 		# handle balls movement
 		video.write(generate_frame(balls, width, height))
