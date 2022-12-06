@@ -70,7 +70,7 @@ def build(name, console, onefile, uac_admin, icon, upx, files, folders):
 	shutil.rmtree(path=work_path, ignore_errors=True)
 
 def main():
-	name = "Key-Click-v2"
+	name = "Circle-Bounce-v1.0.0"
 	console = False
 	onefile = True
 	uac_admin = False
