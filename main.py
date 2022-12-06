@@ -7,9 +7,9 @@ import numpy as np
 
 
 class Ball:
-	def __init__(self, r, x, y, v_x, v_y, color):
+	def __init__(self, r, m, x, y, v_x, v_y, color):
 		self.r = r
-		self.m = ((r ** 3) * pi * 4) / 3
+		self.m = m
 		self.x = x
 		self.y = y
 		self.v_x = v_x
@@ -19,8 +19,12 @@ class Ball:
 def rgb_bgr_convert(color):
 	return color[::-1]
 
-def generate_frame(balls, width, height):
+def hex_2_rgb(hex_color):
+	return tuple(int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
+
+def generate_frame(balls, width, height, background_color):
 	frame = np.zeros((height, width, 3), dtype="uint8")
+	frame[:, :] = background_color
 	for ball in balls:
 		cv2.circle(frame, (int(round(ball.x, 0)), int(round(ball.y, 0))), ball.r, ball.color, -1, cv2.LINE_AA)
 	return frame
@@ -72,15 +76,19 @@ def calculate_wall_collision(balls, ball, wall, width, height):
 			result = (height - balls[ball].r - balls[ball].y) / balls[ball].v_y
 	return result if result > 0 else None
 
-def simulation(width, height, fps, video_length, balls):
+def simulation(file_destination, width, height, fps, video_length, balls, background_color):
 	interval = 1 / fps
 
-	video = cv2.VideoWriter("test.mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+	video = cv2.VideoWriter(file_destination, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 	num_of_frames = video_length * fps
 
+	progress = 0
+	print(f"{progress} %")
 	for frame_num in range(num_of_frames):
-		os.system("cls")
-		print(f"{round((frame_num / num_of_frames) * 100, 2)} %")
+		temp_progress = int((frame_num / num_of_frames) * 100)
+		if temp_progress > progress:
+			progress = temp_progress
+			print(f"{progress} %")
 
 		times = []
 		for ball1 in range(len(balls) - 1):
@@ -179,21 +187,83 @@ def simulation(width, height, fps, video_length, balls):
 
 					moved_time += smallest_time
 
-		video.write(generate_frame(balls, width, height))
+		video.write(generate_frame(balls, width, height, background_color))
 	video.release()
+	print("100 %")
 
-def main():
-	fps = 60
-	width = 1920
-	height = 1080
-	num_of_balls = 25
-	video_length = 30
+def start_sim(file_destination, video_length, fps, width, height, num_of_balls, background_color, ball_color, ball_radius, ball_mass, ball_speeds):
+	if not os.path.isdir(os.path.dirname(os.path.abspath(file_destination))):
+		print("Invalid destination!")
+		return
+	elif os.path.splitext(file_destination)[-1] != ".mp4":
+		print("Invalid extension! (should be *.mp4)")
+		return
+	elif os.path.isfile(file_destination):
+		print("Destination file already exists!\nOverwrite? (Y/N)")
+		if input() not in ("Y", "y"):
+			return
+
+	if not type(video_length) == int or not video_length >= 1:
+		print("Invalid video length! (should be integer greater than 0)")
+		return
+
+	if not type(fps) == int or not fps >= 1:
+		print("Invalid FPS! (should be integer greater than 0)")
+		return
+
+	if not type(width) == int or not width >= 30:
+		print("Invalid width! (should be integer equal to or greater than 30)")
+		return
+
+	if not type(height) == int or not width >= 30:
+		print("Invalid height! (should be integer equal to or greater than 30)")
+		return
+
+	if not type(num_of_balls) == int or not num_of_balls >= 1:
+		print("Invalid number of circles! (should be integer greater than 0)")
+		return
+
+	if not type(background_color) == str:
+		print("Invalid background color! (should be hex value starting with #)")
+		return
+	try:
+		hex_2_rgb(background_color)
+	except ValueError:
+		print("Invalid background color! (should be hex value starting with #)")
+		return
+
+	if ball_color != "":
+		try:
+			hex_2_rgb(ball_color)
+		except ValueError:
+			print("Invalid ball color! (should be hex value starting with # or empty string)")
+			return
+
+	if not type(ball_radius) == tuple or not ball_radius[0] >= 5 or not ball_radius[0] <= ball_radius[1]:
+		print("Invalid ball radius! (should be tuple with minimal value 5)")
+		return
+
+	if not type(ball_mass) == float or not (ball_mass >= 0.0 or ball_mass == - 1.0):
+		print("Invalid ball mass! (should be positive float, unless using 0.0 or -1.0)")
+		return
+
+	if not type(ball_speeds) == tuple or not ball_speeds[0] >= 5 or not ball_speeds[0] <= ball_speeds[1]:
+		print("Invalid ball speed! (should be tuple with minimal value 5)")
+		return
 
 	# generate balls
 	balls = []
 	for _ in range(num_of_balls):
-		radius = random.randint(int(round(min(width, height) * 0.02, 0)), int(round(min(width, height) * 0.1, 0)))
+		# radius
+		radius = random.randint(ball_radius[0], ball_radius[1])
+
+		# x, y
+		tries = 0
 		while True:
+			tries += 1
+			if tries == 10_000:
+				print("Can't fit all the balls in given area!")
+				return
 			x, y = random.randint(radius, width - radius - 1), random.randint(radius, height - radius - 1)
 			valid = True
 			for ball in balls:
@@ -202,17 +272,50 @@ def main():
 					break
 			if valid:
 				break
-		new_ball = Ball(radius,
-		                x, y,
-		                random.choice((- 1, 1)) * random.randint(int(round(min(width, height) * 0.05, 0)),
-		                                                         int(round(min(width, height) * 0.15, 0))),
-		                random.choice((- 1, 1)) * random.randint(int(round(min(width, height) * 0.05, 0)),
-		                                                         int(round(min(width, height) * 0.15, 0))),
-		                rgb_bgr_convert((random.randint(15, 255), random.randint(15, 255), random.randint(15, 255))))
-		balls.append(new_ball)
-	del new_ball, x, y, radius, valid
 
-	simulation(width, height, fps, video_length, balls)
+		# mass
+		if ball_mass == -1.0:
+			mass = ((radius ** 3) * pi * 4) / 3
+		elif ball_mass == 0.0:
+			mass = (radius ** 2) * pi
+		else:
+			mass = ball_mass
+
+		# vx, vy
+		vx, vy = random.choice((-1, 1)) * random.randint(ball_speeds[0], ball_speeds[1]), random.choice((-1, 1)) * random.randint(ball_speeds[0], ball_speeds[1])
+
+		# color (bgr)
+		if ball_color == "":
+			color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+		else:
+			color = rgb_bgr_convert(hex_2_rgb(ball_color))
+
+		# add ball with selected properties
+		balls.append(Ball(radius,
+		                  mass,
+		                  x, y,
+		                  vx, vy,
+		                  color))
+
+	del x, y, radius, mass, vx, vy, color, valid
+
+	# run_simulation
+	simulation(file_destination, width, height, fps, video_length, balls, rgb_bgr_convert(hex_2_rgb(background_color)))
+
+def main():
+	file_destination: str = "video.mp4"   # Location of generated file (with .mp4 extension)
+	video_length: int = 60                # Length of video in seconds (integer)
+	fps: int = 60                         # Frames per second (FPS) of video (integer)
+	width: int = 1920                     # Width of video in pixels (integer)
+	height: int = 1080                    # Height of video in pixels (integer)
+	num_of_balls: int = 25                # Number of balls in video (integer)
+	background_color: str = "#000000"     # Color of background in video, hex value (str)
+	ball_color: str = ""                  # Color of balls, hex value (str) -> if empty color is random
+	ball_radius: (int, int) = (50, 100)   # Size of balls (min_size, max_size), randomly chosen
+	ball_mass: float = 0.0                # Mass of balls, if set all balls have the same mass, otherwise each ball gets its own mass -> 0.0 means mass will be calculated from circles, -1.0 means mass will be calculated from spheres
+	ball_speeds: (int, int) = (100, 150)  # Initial speeds of balls in x, y directions (min_speed, max_speed), randomly chosen
+
+	start_sim(file_destination, video_length, fps, width, height, num_of_balls, background_color, ball_color, ball_radius, ball_mass, ball_speeds)
 
 
 if __name__ == '__main__':
