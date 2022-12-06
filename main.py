@@ -206,12 +206,12 @@ def start_sim(file_destination, video_length, fps, width, height, num_of_balls, 
 		if input() not in ("Y", "y"):
 			return
 	random_name = random.randint(1, 1_000_000_000_000)
-	while os.path.isfile(os.path.join(os.path.splitext(file_destination)[0], f"test_{random_name}.txt")):
+	while os.path.isfile(os.path.join(os.path.dirname(file_destination), f"test_{random_name}.txt")):
 		random_name = random.randint(1, 1_000_000_000_000)
 	try:
-		with open(os.path.join(os.path.splitext(file_destination)[0], f"test_{random_name}.txt"), "w") as file:
+		with open(os.path.join(os.path.dirname(file_destination), f"test_{random_name}.txt"), "w") as file:
 			file.write(" ")
-		os.remove(os.path.join(os.path.splitext(file_destination)[0], f"test_{random_name}.txt"))
+		os.remove(os.path.join(os.path.dirname(file_destination), f"test_{random_name}.txt"))
 	except PermissionError:
 		print("Can't write to target folder!")
 		return
