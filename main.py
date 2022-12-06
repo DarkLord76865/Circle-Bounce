@@ -205,7 +205,14 @@ def start_sim(file_destination, video_length, fps, width, height, num_of_balls, 
 		print("Destination file already exists!\nOverwrite? (Y/N)")
 		if input() not in ("Y", "y"):
 			return
-	if not os.access(file_destination, os.W_OK):
+	random_name = random.randint(1, 1_000_000_000_000)
+	while os.path.isfile(os.path.join(os.path.splitext(file_destination)[0], f"test_{random_name}.txt")):
+		random_name = random.randint(1, 1_000_000_000_000)
+	try:
+		with open(os.path.join(os.path.splitext(file_destination)[0], f"test_{random_name}.txt"), "w") as file:
+			file.write(" ")
+		os.remove(os.path.join(os.path.splitext(file_destination)[0], f"test_{random_name}.txt"))
+	except PermissionError:
 		print("Can't write to target folder!")
 		return
 

@@ -71,7 +71,7 @@ def build(name, console, onefile, uac_admin, icon, upx, files, folders):
 
 def main():
 	name = "Circle-Bounce-v1.0.0"
-	console = False
+	console = True
 	onefile = True
 	uac_admin = False
 	icon = "data\\circle-icon.ico"
