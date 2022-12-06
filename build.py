@@ -14,7 +14,7 @@ def build(name, console, onefile, uac_admin, icon, upx, files, folders):
 
 	result_path = os.path.abspath(".")
 
-	run_list = ['test.py',
+	run_list = ['main.py',
 	            '--noconfirm',
 	            '--clean',
 	            '--name', f"{name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H.%M.%S')}",
