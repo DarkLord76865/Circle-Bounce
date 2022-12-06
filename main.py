@@ -1,3 +1,4 @@
+import argparse
 import os
 import random
 from math import pi, sqrt
@@ -16,7 +17,7 @@ class Ball:
 		self.v_y = v_y
 		self.color = color
 
-def rgb_bgr_convert(color):
+def rgb_2_bgr(color):
 	return color[::-1]
 
 def hex_2_rgb(hex_color):
@@ -191,7 +192,7 @@ def simulation(file_destination, width, height, fps, video_length, balls, backgr
 	video.release()
 	print("100 %")
 
-def start_sim(file_destination, video_length, fps, width, height, num_of_balls, background_color, ball_color, ball_radius, ball_mass, ball_speeds):
+def start_sim(file_destination, video_length, fps, width, height, num_of_balls, background_color, ball_color, ball_radius_min, ball_radius_max, ball_mass, ball_speed_min, ball_speed_max):
 	if not os.path.isdir(os.path.dirname(os.path.abspath(file_destination))):
 		print("Invalid destination!")
 		return
@@ -239,23 +240,23 @@ def start_sim(file_destination, video_length, fps, width, height, num_of_balls, 
 			print("Invalid ball color! (should be hex value starting with # or empty string)")
 			return
 
-	if not type(ball_radius) == tuple or not ball_radius[0] >= 5 or not ball_radius[0] <= ball_radius[1]:
-		print("Invalid ball radius! (should be tuple with minimal value 5)")
+	if not type(ball_radius_min) == int or not type(ball_radius_max) == int or ball_radius_min < 5 or ball_radius_min > ball_radius_max:
+		print("Invalid ball radius! (should be integer, minimal value 5)")
 		return
 
 	if not type(ball_mass) == float or not (ball_mass >= 0.0 or ball_mass == - 1.0):
 		print("Invalid ball mass! (should be positive float, unless using 0.0 or -1.0)")
 		return
 
-	if not type(ball_speeds) == tuple or not ball_speeds[0] >= 5 or not ball_speeds[0] <= ball_speeds[1]:
-		print("Invalid ball speed! (should be tuple with minimal value 5)")
+	if not type(ball_speed_min) == int or not type(ball_speed_max) == int or ball_speed_min < 5 or ball_speed_min > ball_speed_max:
+		print("Invalid ball speed! (should be integer, minimal value 5)")
 		return
 
 	# generate balls
 	balls = []
 	for _ in range(num_of_balls):
 		# radius
-		radius = random.randint(ball_radius[0], ball_radius[1])
+		radius = random.randint(ball_radius_min, ball_radius_max)
 
 		# x, y
 		tries = 0
@@ -282,13 +283,15 @@ def start_sim(file_destination, video_length, fps, width, height, num_of_balls, 
 			mass = ball_mass
 
 		# vx, vy
-		vx, vy = random.choice((-1, 1)) * random.randint(ball_speeds[0], ball_speeds[1]), random.choice((-1, 1)) * random.randint(ball_speeds[0], ball_speeds[1])
+		vx, vy = random.choice((-1, 1)) * random.randint(ball_speed_min, ball_speed_max), random.choice((-1, 1)) * random.randint(ball_speed_min, ball_speed_max)
 
 		# color (bgr)
 		if ball_color == "":
 			color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+			while color == rgb_2_bgr(hex_2_rgb(background_color)):
+				color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 		else:
-			color = rgb_bgr_convert(hex_2_rgb(ball_color))
+			color = rgb_2_bgr(hex_2_rgb(ball_color))
 
 		# add ball with selected properties
 		balls.append(Ball(radius,
@@ -300,22 +303,52 @@ def start_sim(file_destination, video_length, fps, width, height, num_of_balls, 
 	del x, y, radius, mass, vx, vy, color, valid
 
 	# run_simulation
-	simulation(file_destination, width, height, fps, video_length, balls, rgb_bgr_convert(hex_2_rgb(background_color)))
+	simulation(file_destination, width, height, fps, video_length, balls, rgb_2_bgr(hex_2_rgb(background_color)))
 
 def main():
-	file_destination: str = "video.mp4"   # Location of generated file (with .mp4 extension)
-	video_length: int = 60                # Length of video in seconds (integer)
-	fps: int = 60                         # Frames per second (FPS) of video (integer)
-	width: int = 1920                     # Width of video in pixels (integer)
-	height: int = 1080                    # Height of video in pixels (integer)
-	num_of_balls: int = 25                # Number of balls in video (integer)
-	background_color: str = "#000000"     # Color of background in video, hex value (str)
-	ball_color: str = ""                  # Color of balls, hex value (str) -> if empty color is random
-	ball_radius: (int, int) = (50, 100)   # Size of balls (min_size, max_size), randomly chosen
-	ball_mass: float = 0.0                # Mass of balls, if set all balls have the same mass, otherwise each ball gets its own mass -> 0.0 means mass will be calculated from circles, -1.0 means mass will be calculated from spheres
-	ball_speeds: (int, int) = (100, 150)  # Initial speeds of balls in x, y directions (min_speed, max_speed), randomly chosen
+	# file_destination: str = "video.mp4"   # Location of generated file (with .mp4 extension)
+	# video_length: int = 60                # Length of video in seconds (integer)
+	# fps: int = 60                         # Frames per second (FPS) of video (integer)
+	# width: int = 1920                     # Width of video in pixels (integer)
+	# height: int = 1080                    # Height of video in pixels (integer)
+	# num_of_balls: int = 25                # Number of balls in video (integer)
+	# background_color: str = "#000000"     # Color of background in video, hex value (str)
+	# ball_color: str = ""                  # Color of balls, hex value (str) -> if empty color is random
+	# ball_radius_min: int = 75             # Minimal size of balls, randomly chosen
+	# ball_radius_max: int = 125            # Maximal size of balls, randomly chosen
+	# ball_mass: float = 0.0                # Mass of balls, if set all balls have the same mass, otherwise each ball gets its own mass -> 0.0 means mass will be calculated from circles, -1.0 means mass will be calculated from spheres
+	# ball_speed_min: int = 100             # Initial minimal speed of balls in x or y directions, randomly chosen
+	# ball_speed_max: int = 150             # Initial maximal speed of balls in x or y directions, randomly chosen
 
-	start_sim(file_destination, video_length, fps, width, height, num_of_balls, background_color, ball_color, ball_radius, ball_mass, ball_speeds)
+	parser = argparse.ArgumentParser()
+	parser.add_argument("destination_file", help="File name and path where video will be saved", type=str)
+	parser.add_argument("--video_length", help="Length of video (in seconds)", type=int, default=60)
+	parser.add_argument("--fps", help="Frames per second (FPS) of video", type=int, default=60)
+	parser.add_argument("--width", help="Width of video", type=int, default=1920)
+	parser.add_argument("--height", help="Height of video", type=int, default=1080)
+	parser.add_argument("--num_of_balls", help="Number of balls", type=int, default=25)
+	parser.add_argument("--background_color", help="Background color (hex)", type=str, default="#000000")
+	parser.add_argument("--ball_color", help="Color of balls, random if empty", type=str, default="")
+	parser.add_argument("--radius_min", help="Minimal ball radius", type=int, default=50)
+	parser.add_argument("--radius_max", help="Maximal ball radius", type=int, default=100)
+	parser.add_argument("--ball_mass", help="Mass of all balls, or the way of calculating it (0.0 calculates as circles, -1.0 calculates as spheres)", type=float, default=0.0)
+	parser.add_argument("--speed_min", help="Minimal ball speed", type=int, default=80)
+	parser.add_argument("--speed_max", help="Maximal ball speed", type=int, default=130)
+	args = parser.parse_args()
+
+	start_sim(args.destination_file,
+	          args.video_length,
+	          args.fps,
+	          args.width,
+	          args.height,
+	          args.num_of_balls,
+	          args.background_color,
+	          args.ball_color,
+	          args.radius_min,
+	          args.radius_max,
+	          args.ball_mass,
+	          args.speed_min,
+	          args.speed_max)
 
 
 if __name__ == '__main__':
