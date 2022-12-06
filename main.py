@@ -1,7 +1,9 @@
+import os
+import random
+from math import pi, sqrt
+
 import cv2
 import numpy as np
-import random
-from math import pi, sqrt, sin, cos, atan
 
 
 def rgb_bgr_convert(color):
@@ -16,11 +18,7 @@ def move_balls(balls, interval):
 def generate_frame(balls, width, height):
 	frame = np.zeros((height, width, 3), dtype="uint8")
 	for ball in balls:
-		#print(frame, (ball.x, ball.y), ball.r, ball.color, -1, cv2.LINE_AA, sep="\n")
 		cv2.circle(frame, (int(round(ball.x, 0)), int(round(ball.y, 0))), ball.r, ball.color, -1, cv2.LINE_AA)
-	#cv2.imshow("test", frame)
-	#cv2.waitKey(0)
-	#cv2.destroyAllWindows()
 	return frame
 
 def calculate_collision(balls, ball1, ball2):
@@ -51,6 +49,18 @@ def calculate_collision(balls, ball1, ball2):
 				return min(sols)
 	return None
 
+def calculate_wall_collision(balls, ball, wall):
+	match wall:
+		case 0:  # left
+			result = (balls[ball].r - balls[ball].x) / balls[ball].v_x
+		case 1:  # right
+			result = (width - balls[ball].r - balls[ball].x) / balls[ball].v_x
+		case 2:  # bottom
+			result = (balls[ball].r - balls[ball].y) / balls[ball].v_y
+		case 3:  # top
+			result = (height - balls[ball].r - balls[ball].y) / balls[ball].v_y
+	return result if result > 0 else None
+
 class Ball:
 	def __init__(self, r, x, y, v_x, v_y, color):
 		self.r = r
@@ -67,7 +77,7 @@ if __name__ == '__main__':
 	width = 1920
 	height = 1080
 	num_of_balls = 25
-	video_length = 10
+	video_length = 300
 
 	interval = 1 / fps
 
@@ -95,10 +105,9 @@ if __name__ == '__main__':
 	# simulation
 	video = cv2.VideoWriter("test.mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 	num_of_frames = video_length * fps
-	for x in range(60):
-		video.write(generate_frame(balls, width, height))
 
 	for frame_num in range(num_of_frames):
+		os.system("cls")
 		print(f"{round((frame_num / num_of_frames) * 100, 2)} %")
 
 		times = []
@@ -107,48 +116,94 @@ if __name__ == '__main__':
 			for ball2 in range(ball1 + 1, len(balls)):
 				times_ball1.append(calculate_collision(balls, ball1, ball2))
 			times.append(times_ball1)
-
-		# TODO: uvesti granice ekrana
+		wall_times = []
+		for ball in range(len(balls)):
+			ball_times = []
+			for wall in range(4):  # 0 = left, 1 = right, 2 = bottom, 3 = top
+				ball_times.append(calculate_wall_collision(balls, ball, wall))
+			wall_times.append(ball_times)
 
 		moved_time = 0
 		while moved_time < interval:
+
+			ball_2_ball_col = None  # None: no collision | True: ball 2 ball collision | False: ball 2 wall collision
 			time_left = interval - moved_time
 			smallest_time = time_left
-			smallest_ind = (None, None)
+
 			for x in range(len(times)):
 				for y in range(len(times[x])):
 					if times[x][y] is not None and times[x][y] <= smallest_time:
 						smallest_ind = (x, x + y + 1)
 						smallest_time = times[x][y]
-			if smallest_time <= time_left and smallest_ind[0] is not None:
-				print("prolaz", time_left, smallest_time)
-				balls = move_balls(balls, smallest_time)
+						ball_2_ball_col = True
+			for x in range(len(wall_times)):
+				for y in range(len(wall_times[x])):
+					if wall_times[x][y] is not None and wall_times[x][y] <= smallest_time:
+						smallest_ind = (x, y)
+						smallest_time = wall_times[x][y]
+						ball_2_ball_col = False
 
-				# Handling collision
-				d = balls[smallest_ind[0]].r + balls[smallest_ind[1]].r
-				nx = (balls[smallest_ind[1]].x - balls[smallest_ind[0]].x) / d
-				ny = (balls[smallest_ind[1]].y - balls[smallest_ind[0]].y) / d
-				p = (2 * (nx * (balls[smallest_ind[0]].v_x - balls[smallest_ind[1]].v_x) + ny * (balls[smallest_ind[0]].v_y - balls[smallest_ind[1]].v_y))) / (balls[smallest_ind[0]].m + balls[smallest_ind[1]].m)
-				balls[smallest_ind[0]].v_x -= p * balls[smallest_ind[1]].m * nx
-				balls[smallest_ind[0]].v_y -= p * balls[smallest_ind[1]].m * ny
-				balls[smallest_ind[1]].v_x += p * balls[smallest_ind[0]].m * nx
-				balls[smallest_ind[1]].v_y += p * balls[smallest_ind[0]].m * ny
+			match ball_2_ball_col:
+				case None:  # no collision
+					balls = move_balls(balls, time_left)
+					moved_time += time_left
+				case True:  # ball 2 ball collision
+					balls = move_balls(balls, smallest_time)
 
-				# calculating new times for balls
-				for x in range(len(times)):
-					for y in range(len(times[x])):
-						if x in smallest_ind or (x + y + 1) in smallest_ind:
-							if x == smallest_ind[0] and (x + y + 1) == smallest_ind[1]:
-								times[x][y] = None
-							else:
+					# Handling collision
+					d = balls[smallest_ind[0]].r + balls[smallest_ind[1]].r
+					nx = (balls[smallest_ind[1]].x - balls[smallest_ind[0]].x) / d
+					ny = (balls[smallest_ind[1]].y - balls[smallest_ind[0]].y) / d
+					p = (2 * (nx * (balls[smallest_ind[0]].v_x - balls[smallest_ind[1]].v_x) + ny * (balls[smallest_ind[0]].v_y - balls[smallest_ind[1]].v_y))) / (balls[smallest_ind[0]].m + balls[smallest_ind[1]].m)
+					balls[smallest_ind[0]].v_x -= p * balls[smallest_ind[1]].m * nx
+					balls[smallest_ind[0]].v_y -= p * balls[smallest_ind[1]].m * ny
+					balls[smallest_ind[1]].v_x += p * balls[smallest_ind[0]].m * nx
+					balls[smallest_ind[1]].v_y += p * balls[smallest_ind[0]].m * ny
+
+					# calculating new times for balls
+					for x in range(len(times)):
+						for y in range(len(times[x])):
+							if x in smallest_ind or (x + y + 1) in smallest_ind:
+								if x == smallest_ind[0] and (x + y + 1) == smallest_ind[1]:
+									times[x][y] = None
+								else:
+									times[x][y] = calculate_collision(balls, x, x + y + 1)
+							elif times[x][y] is not None:
+								times[x][y] -= smallest_time
+
+					for x in range(len(wall_times)):
+						for y in range(4):
+							if x in smallest_ind:
+								wall_times[x][y] = calculate_wall_collision(balls, x, y)
+							elif wall_times[x][y] is not None:
+								wall_times[x][y] -= smallest_time
+
+					moved_time += smallest_time
+				case False:  # ball 2 wall collision
+					balls = move_balls(balls, smallest_time)
+					if smallest_ind[1] < 2:
+						balls[smallest_ind[0]].v_x *= -1
+					else:
+						balls[smallest_ind[0]].v_y *= -1
+
+					for x in range(len(times)):
+						for y in range(len(times[x])):
+							if x == smallest_ind[0] or (x + y + 1) == smallest_ind[0]:
 								times[x][y] = calculate_collision(balls, x, x + y + 1)
-						elif times[x][y] is not None:
-							times[x][y] -= smallest_time
-				moved_time += smallest_time
-			else:
-				balls = move_balls(balls, time_left)
-				moved_time += time_left
+							elif times[x][y] is not None:
+								times[x][y] -= smallest_time
 
-		# handle balls movement
+					for x in range(len(wall_times)):
+						for y in range(4):
+							if x == smallest_ind[0]:
+								if y == smallest_ind[1]:
+									wall_times[x][y] = None
+								else:
+									wall_times[x][y] = calculate_wall_collision(balls, x, y)
+							elif wall_times[x][y] is not None:
+								wall_times[x][y] -= smallest_time
+
+					moved_time += smallest_time
+
 		video.write(generate_frame(balls, width, height))
 	video.release()
