@@ -203,6 +203,9 @@ def start_sim(file_destination, video_length, fps, width, height, num_of_balls, 
 		print("Destination file already exists!\nOverwrite? (Y/N)")
 		if input() not in ("Y", "y"):
 			return
+	if not os.access(file_destination, os.W_OK):
+		print("Can't write to target folder!")
+		return
 
 	if not type(video_length) == int or not video_length >= 1:
 		print("Invalid video length! (should be integer greater than 0)")
