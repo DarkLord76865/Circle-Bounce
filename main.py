@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+import time
 from math import pi, sqrt
 
 import cv2
@@ -83,6 +84,7 @@ def simulation(file_destination, width, height, fps, video_length, balls, backgr
 	video = cv2.VideoWriter(file_destination, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 	num_of_frames = video_length * fps
 
+	start_time = time.time()
 	progress = 0
 	print(f"{progress} %")
 	for frame_num in range(num_of_frames):
@@ -190,7 +192,7 @@ def simulation(file_destination, width, height, fps, video_length, balls, backgr
 
 		video.write(generate_frame(balls, width, height, background_color))
 	video.release()
-	print("100 %")
+	print(f"100 %\nEnded in {round(time.time() - start_time, 3)} seconds...")
 
 def start_sim(file_destination, video_length, fps, width, height, num_of_balls, background_color, ball_color, ball_radius_min, ball_radius_max, ball_mass, ball_speed_min, ball_speed_max):
 	if not os.path.isdir(os.path.dirname(os.path.abspath(file_destination))):
