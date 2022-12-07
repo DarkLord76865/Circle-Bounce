@@ -1,6 +1,6 @@
 # Circle-Bounce
 CLI app to generate a video of bouncing circles 
-(using continuous collision detection)
+(with continuous collision detection)
 
 ![screenshot](https://user-images.githubusercontent.com/40371578/205990530-b4723a3e-3419-4fc6-b257-a8b336c3bd91.png)
 Example: https://www.youtube.com/watch?v=ui5OTEb7xIs
